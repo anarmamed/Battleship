@@ -3,3 +3,77 @@
     padding: 0;
     box-sizing: border-box;
 }
+
+#board {
+    position: relative;
+    width: 500px;
+    height: 500px;
+    margin: 0 auto;
+    background: url("../img/board.jpg") no-repeat top center;
+   
+}
+
+#messageArea {
+    position: absolute;
+    top: 10px;
+    left: 120px;
+    font-size: 24px;
+    color: #fff;
+}
+
+table {
+    position: absolute;
+    left: 67px;
+    top: 55px;
+    border-spacing: 0px;
+}
+
+td {
+    width: 58px;
+    height: 58px;
+}
+
+.num {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    background-color: #ccc;
+    border: none;
+}
+
+.let {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    background-color: #ccc;
+    border: none;
+}
+
+form {
+    position: absolute;
+    bottom: -90px;
+    right: 30%;
+    padding: 20px 30px;
+    background-color: #000;
+}
+
+form input {
+    width: 60px;
+    padding: 5px;
+    font-size: 20px; 
+}
+
+form input.btn {
+    padding: 5px;
+    background-color: #324d06;
+    color: #fff;
+    margin-left: 10px; 
+}
+
+.hit {
+    background: url("../img/hit.png") center center no-repeat;
+}
+
+.miss {
+    background: url("../img/miss.png") center center no-repeat;
+}
