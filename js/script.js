@@ -1,400 +1,238 @@
-var model = {
-	boardSize: 7,
-	numShips: 3,
-	shipLength: 3,
-	shipsSunk: 0,
-	
-	ships: [
-		{ locations: [0, 0, 0], hits: ["", "", ""] },
-		{ locations: [0, 0, 0], hits: ["", "", ""] },
-		{ locations: [0, 0, 0], hits: ["", "", ""] }
-	],
+var model = {   // Объект "Модель" - содержит логику, связанную с изменениями состояния игры
+    boardSize: 7,   // размер сетки игрового поля.
+    numShips: 3,    // количество кораблей в игре.
+    shipLength: 3,  // длина каждого корабля (в клетках)
+    shipsSunk: 0,   // количество потопленных кораблей.
+    ships: [
+        { locations: [0, 0, 0], hits: ["", "", ""] },
+        { locations: [0, 0, 0], hits: ["", "", ""] },
+        { locations: [0, 0, 0], hits: ["", "", ""] }
+    ],
 
-// original hard-coded values for ship locations
-/*
-	ships: [
-		{ locations: ["06", "16", "26"], hits: ["", "", ""] },
-		{ locations: ["24", "34", "44"], hits: ["", "", ""] },
-		{ locations: ["10", "11", "12"], hits: ["", "", ""] }
-	],
-*/
+    // тестовые позиции кораблей
+    // ships: [{locations: ["06", "16", "26"], hits: ["", "", ""] },  // Переменная ships(корабли) ссылается на объект с массивом, внутри которого три объекта представляющих корабль №1, 2 и 3. 
+    //         { locations: ["24", "34", "44"], hits: ["", "", ""] },  // Каждый объект(корабль) содержит в себе массив locations(координаты) и массив hits(попадания) с тремя элементами внутри. 
+    //         { locations: ["10", "11", "12"], hits: ["", "", ""] }],   // Объект с индексом 2(карабль №3)
 
-	fire: function(guess) {
-		for (var i = 0; i < this.numShips; i++) {
-			var ship = this.ships[i];
-			var index = ship.locations.indexOf(guess);
+    fire: function(guess) {     // Метод получает координаты выстрела
+        for (var i = 0; i < this.numShips; i++) {   // перебираем массив ships, последовательно проверяя каждый корабль. This указывает что свойство numShip относится именно к этому объекту - model. 
+            var ship = this.ships[i];   // Получаем объект корабля с индексом из свойства ships
+            var index = ship.locations.indexOf(guess);   // Метод indexOf ищет в массиве указанное значение и возвращает его индекс (или -1, если значение отсутствует в массиве).
+            if (index >= 0) {   // Если полученный индекс из массива locations  больше либо равен нулю, то...
+                ship.hits[index] = "hit";   // Индексу из массива hits присваивается значение "hit" 
+                view.displayHit(guess);     // Сообщаем объекту view что в клетке guess следует вывести маркер попадания "hit"
+                view.displayMessage("Попадание в цель!");    // Приказываем объекту view вывести сообщение с помощью метода displayMessage
+                if (this.isSunk(ship)) {    // Если метод isSunk(ship) возвращает true, то есть корабль потоплен, то...
+                    view.displayMessage("Вы потопили мой корабль!");   // Приказываем объекту view вывести сообщение с помощью метода displayMessage
+                    this.shipsSunk++;   // Увеличиваем кол-во потопленных кораблей на один
+                }
+                return true;    // Возвращает true, если индекс больше либо равен нулю 
+            }
+        }
+        view.displayMiss(guess);    // Сообщаем объекту view что в клетке guess следует вывести маркер промаха "miss"
+        view.displayMessage("Вы промахнулись"); // // Приказываем объекту view вывести сообщение с помощью метода displayMessage
+        return false;   //Если после перебора всех кораблей попадание не обнаружено, метод возвращает false
+    },
 
-			// here's an improvement! Check to see if the ship
-			// has already been hit, message the user, and return true.
-			if (ship.hits[index] === "hit") {
-				view.displayMessage("Oops, you already hit that location!");
-				return true;
-			} else if (index >= 0) {
-				ship.hits[index] = "hit";
-				view.displayHit(guess);
-				view.displayMessage("HIT!");
+    isSunk: function(ship) {    // Метод получает объект корабля(ship) и возвращает true, если корабль потоплен, или false, если он еще держится на плаву.
+        for (var i = 0; i < this.shipLength; i++) { // перебераем объект корабля до тех пор пока не закончится его длина(3 клетки)
+            if (ship.hits[i] !== "hit") {   // проверяет, помечены ли все его клетки маркером "hit", если есть хотя бы одна клетка, в которую еще не попал игрок, то корабль еще жив и...
+                return false;   //  метод возвращает false.
+            }
+        }
+        return true;    // если нет — корабль потоплен! 
+    },
 
-				if (this.isSunk(ship)) {
-					view.displayMessage("You sank my battleship!");
-					this.shipsSunk++;
-				}
-				return true;
-			}
-		}
-		view.displayMiss(guess);
-		view.displayMessage("You missed.");
-		return false;
-	},
+    generateShipLocations: function() { // Метод создает массив ships с количеством кораблей, определяемым свойством numShips
+        var locations;  // массив позиций нового корабля, который мы собираемся разместить на игровом поле.
+        for (var i = 0; i < this.numShips; i++) { // цикл перебора для каждого корабля
+            do {
+                locations = this.generateShip(); // Генерируем новый набор позиций...
+            } while (this.collision(locations));    // ...и проверяем, перекрываются ли эти позиции с существующими кораблями на доске. Если есть перекрытия, нужна еще одна попытка.
+                this.ships[i].locations = locations;    // Полученные позиции без перекрытий сохраняются в свойстве locations объекта корабля в массиве model.ships
+        }
+    },
 
-	isSunk: function(ship) {
-		for (var i = 0; i < this.shipLength; i++)  {
-			if (ship.hits[i] !== "hit") {
-				return false;
-			}
-		}
-	    return true;
-	},
+    generateShip: function() {  // Метод создает массив со случайными позициями корабля
+        var direction = Math.floor(Math.random() * 2);  // Math.random мы генерируем число от 0 до 1 и умножаем результат на 2, чтобы получить число в диапазоне от 0 до 2 (не включая 2). Затем Math.floor преобразует результат в 0 или 1.
+        var row, col;
+        if (direction === 1) {  // Если значение direction равно 1, создается горизонтальный корабль...
+                row = Math.floor(Math.random() * this.boardSize);   // генерируется начальная позиция (первая), а остальные позиции будут просто находиться в двух соседних столбцах (при горизонтальном расположении) или строках (при вертикальном расположении).
+                col = Math.floor(Math.random() * (this.boardSize - this.shipLength));   // уменьшаем размер доски (boardSize) на (shipLength), чтобы начальный столбец всегда лежал в диапазоне от 0 до 4
+            } else {    // Если значение direction равно 0, создается вертикальный корабль...
+                row = Math.floor(Math.random() * (this.boardSize - this.shipLength));
+                col = Math.floor(Math.random() * this.boardSize);
+            }
+        var newShipLocations = [];   // Набор позиций нового корабля начинается с пустого массива, в который последовательно добавляются элементы.
+        for (var i = 0; i < this.shipLength; i++) { 
+            if (direction === 1) {
+                newShipLocations.push(row + "" + (col + i));    // добавляем(push) в массив горизонтальный корабль. При первой итерации i равно 0, и сумма обозначает начальный столбец. При второй итерации происходит переход к следующему столбцу, а при третьей — к следующему за ним. Так в массиве генерируются серии элементов “01”, “02”, “03”.
+            } else {
+                newShipLocations.push((row + i) + "" + col);    // увеличивается строка — при каждой итерации цикла к ней прибавляется i.
+            }
+        }
+        return newShipLocations;    // Когда все позиции сгенерированы, метод возвращает массив
+    },
 
-	generateShipLocations: function() {
-		var locations;
-		for (var i = 0; i < this.numShips; i++) {
-			do {
-				locations = this.generateShip();
-			} while (this.collision(locations));
-			this.ships[i].locations = locations;
-		}
-		console.log("Ships array: ");
-		console.log(this.ships);
-	},
+    collision: function(locations) {    // Метод получает данные корабля и проверяет, перекрывается ли хотя бы одна клетка с клетками других кораблей, уже находящихся на поле.
+        for (var i = 0; i < this.numShips; i++) {  
+            var ship = model.ships[i];   // Для каждого корабля, уже находящегося на поле...
+            for (var j = 0; j < locations.length; j++) {    //...проверить, встречается ли какая-либо из позиций массива locations нового корабля в массиве locations существующих кораблей.
+                if (ship.locations.indexOf(locations[j]) >= 0) {    // если полученный индекс больше либо равен 0, мы знаем, что клетка уже занята, поэтому метод возвращает true (перекрытие обнаружено)
+            return true;
+                }
+            }
+        }
+        return false;   // Если выполнение дошло до этой точки, значит, ни одна из позиций не была обнаружена в других массивах, поэтому функция возвращает false (перекрытия отсутствуют)
+    }
 
-	generateShip: function() {
-		var direction = Math.floor(Math.random() * 2);
-		var row, col;
-
-		if (direction === 1) { // horizontal
-			row = Math.floor(Math.random() * this.boardSize);
-			col = Math.floor(Math.random() * (this.boardSize - this.shipLength + 1));
-		} else { // vertical
-			row = Math.floor(Math.random() * (this.boardSize - this.shipLength + 1));
-			col = Math.floor(Math.random() * this.boardSize);
-		}
-
-		var newShipLocations = [];
-		for (var i = 0; i < this.shipLength; i++) {
-			if (direction === 1) {
-				newShipLocations.push(row + "" + (col + i));
-			} else {
-				newShipLocations.push((row + i) + "" + col);
-			}
-		}
-		return newShipLocations;
-	},
-
-	collision: function(locations) {
-		for (var i = 0; i < this.numShips; i++) {
-			var ship = this.ships[i];
-			for (var j = 0; j < locations.length; j++) {
-				if (ship.locations.indexOf(locations[j]) >= 0) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-}; 
+};
 
 
-var view = {
-	displayMessage: function(msg) {
-		var messageArea = document.getElementById("messageArea");
-		messageArea.innerHTML = msg;
-	},
 
-	displayHit: function(location) {
-		var cell = document.getElementById(location);
-		cell.setAttribute("class", "hit");
-	},
+var view = {    // Объект "Представление" - отвечает за визуальный вид игры: выводит сообщения для пользователя, отмечает маркерами попадания и промахи
+    displayMessage: function(msg) {     // Метод displayMessage выводит сообщение для пользователя. Получает аргумент msg(текст сообщения).
+        var messageArea = document.getElementById("messageArea");   // Получаю элемент <div id="messageArea"> из DOM и присваиваю его переменной var messageArea.
+        messageArea.innerHTML = msg;    // Изменяю значение элемента messageArea, через его свойство innerHTML, на значение текстового сообщения msg.
+    },
+    displayHit: function(location) {    // Метод displayHit принимает аргумент(координаты выстрела введенные пользователем),который образуется из строки и столбца и совпадает с идентификатором элемента <td>(ячейка в таблице).
+        var cell = document.getElementById(location);   // Получаю ссылку на элемент, которому соответсвует аргумент(координаты выстрела введенные пользователем), то есть на элемент <td> с идентификатором соответсвующиму введенным пользователем координатам
+        cell.setAttribute("class", "hit");  // Метод setAttribute назначает класс "hit"(прописан в CSS) элементу cell, то есть элементу <td> с идентификатором соответсвующиму введенным пользователем координатам.
+    },
+    displayMiss: function(location) {   // Метод displayHit принимает аргумент(координаты выстрела введенные пользователем),то есть на элемент <td> с идентификатором соответсвующиму введенным пользователем координатам
+        var cell = document.getElementById(location);   // Получаю ссылку на элемент, которому соответсвует аргумент(координаты выстрела введенные пользователем) 
+        cell.setAttribute("class", "miss");    // Метод setAttribute назначает класс "miss"(прописан в CSS) элементу cell, то есть элементу <td> с идентификатором соответсвующиму введенным пользователем координатам)
+    }
+};
+// // тестовая проверка для view:
+// view.displayMiss("00"); // Методу displayMiss объекта view передается аргумент(координаты выстрела введенные пользователем) в параметр (location), который соответсвует id(идентификатору) элемента <td>(ячейка в таблице).
+// view.displayHit("34");
+// view.displayMessage("Хорошо, все идет по плану!");  // Методу displayMessage объекта view передается аргумент(текст сообщения) в параметр msg. 
 
-	displayMiss: function(location) {
-		var cell = document.getElementById(location);
-		cell.setAttribute("class", "miss");
-	}
 
-}; 
 
-var controller = {
-	guesses: 0,
+var controller = {  // Объект "Контроллер" - связывает все компоненты, получая координаты выстрела guess, обрабатывая их и передавая модели
+    guesses: 0,     // колличество выстрелов произведенных пользователем
+    processGuess: function(guess) {     // метод processGuess получает координаты выстрела в формате “A0"
+        var location = parseGuess(guess);   // проверка введенных данных методом parseGuess
+        if (location){      // если метод parseGuess вернул true, то...
+            this.guesses++;     // увеличиваем кол-во выстрелов, из объекта controller, на единицу
+            var hit = model.fire(location);     // координаты выстрела от игрока (строки и столбца) передается методу fire.
+            if (hit && model.shipsSunk === model.numShips) {    // Если выстрел попал в цель, а количество потопленных кораблей равно количеству кораблей в игре, то
+                view.displayMessage("Вы потопили все корабли, за " + this.guesses + " выстрелов");
 
-	processGuess: function(guess) {
-		var location = parseGuess(guess);
-		if (location) {
-			this.guesses++;
-			var hit = model.fire(location);
-			if (hit && model.shipsSunk === model.numShips) {
-					view.displayMessage("You sank all my battleships, in " + this.guesses + " guesses");
-			}
-		}
-	}
+            }   
+        }
+    }
 }
 
 
-// helper function to parse a guess from the user
+// Вспомогательные функции:
 
-function parseGuess(guess) {
-	var alphabet = ["A", "B", "C", "D", "E", "F", "G"];
-
-	if (guess === null || guess.length !== 2) {
-		alert("Oops, please enter a letter and a number on the board.");
-	} else {
-		var firstChar = guess.charAt(0);
-		var row = alphabet.indexOf(firstChar);
-		var column = guess.charAt(1);
-		
-		if (isNaN(row) || isNaN(column)) {
-			alert("Oops, that isn't on the board.");
-		} else if (row < 0 || row >= model.boardSize ||
-		           column < 0 || column >= model.boardSize) {
-			alert("Oops, that's off the board!");
-		} else {
-			return row + column;
-		}
-	}
-	return null;
+function parseGuess(guess) {    // Получаем координаты выстрела от игрока(A0) и проверяем их на действительность
+    var alphabet = ["A", "B", "C", "D", "E", "F", "G"];     // массив с буквами которые могут присутствовать в действительных координатах.
+    if (guess === null || guess.length !== 2) {     // Проверяем данные на null и убеждаемся, что в строке два символа
+        alert("Ошибка! Введите заглавную букву и цифру");
+    } else {
+        firstChar = guess.charAt(0);    // Извлекаем первый символ строки из координат выстрела от игрока(A0) при помощи метода charAt
+        var row = alphabet.indexOf(firstChar);  // При помощи метода indexOf получаем цифру соответствующую извлеченному символу(букве).
+        var column = guess.charAt(1);   // Получаем второй символ из строки(координаты выстрела A0,B1) представляющий столбец игрового поля
+        if (isNaN(row) || isNaN(column)) {  //Функция isNaN выявляет строки и столбцы, которые не являются цифрами
+            alert("Ошибка! Введите корректные данные");
+        } else if (row < 0 || row >= model.boardSize || column < 0 || column >= model.boardSize) {  // Проверка. Цифры лежат в диапазоне от 0 до 6 и не выходят за размеры игрового поля
+            alert("Ошибка! Введите корректные данные");
+        } else {
+            return row + column;    // row — число, а column — строка, поэтому результат преобразуется в строку(конкатенация).
+        }
+    }
+    return null;    // если какая-то проверка не прошла, то метод возвращает null.
 }
 
 
-// event handlers
-
-function handleFireButton() {
-	var guessInput = document.getElementById("guessInput");
-	var guess = guessInput.value.toUpperCase();
-
-	controller.processGuess(guess);
-
-	guessInput.value = "";
-}
-
-function handleKeyPress(e) {
-	var fireButton = document.getElementById("fireButton");
-
-	// in IE9 and earlier, the event object doesn't get passed
-	// to the event handler correctly, so we use window.event instead.
-	e = e || window.event;
-
-	if (e.keyCode === 13) {
-		fireButton.click();
-		return false;
-	}
+function handleFireButton() {   // функция будет вызываться при каждом нажатии кнопки Fire
+    var guessInput = document.getElementById("guessInput"); // получаем ссылку на элемент формы по идентификатору элемента, “guessInput”
+    var guess = guessInput.value;   // извлекаем данные, введенные пользователем. Координаты хранятся в свойстве value элемента input
+    controller.processGuess(guess); // передаем данные введенные пользователем контроллеру, точнее его методу processGuess 
+    guessInput.value = "";  // команда просто удаляет содержимое элемента input формы, заменяя его пустой строкой. Это делается для того, чтобы приходилось многократно выделять текст и удалять его перед вводом следующего выстрела.
 }
 
 
-// init - called when the page has completed loading
+function handleKeyPress(e) {    // Обработчик нажатий клавиш вызывается при каждом нажатии клавиши в поле input страницы.
+    var fireButton = document.getElementById("fireButton");
+    if (e.keyCode === 13) {     // Если нажата клавиша Enter, то  кнопка Fire должна сработать так, словно игрок щелкнул на ней.
+    fireButton.click();
+    return false;
+    }
+}
 
-window.onload = init;
 
-function init() {
-	// Fire! button onclick handler
-	var fireButton = document.getElementById("fireButton");
-	fireButton.onclick = handleFireButton;
+window.onload = init;   // браузер должен выполнять init при полной загрузке страницы.
 
-	// handle "return" key press
-	var guessInput = document.getElementById("guessInput");
-	guessInput.onkeypress = handleKeyPress;
-
-	// place the ships on the game board
-	model.generateShipLocations();
+function init() {      
+    // Связывает обработчик событий с кнопкой Fire
+    var fireButton = document.getElementById("fireButton"); 
+    fireButton.onclick = handleFireButton;  //назначаем обработчик события нажатия — вызываем функцию handleFireButton нажатием на кнопку Fire
+   
+    // Связываем обработчик событий с нажатием клавиши Enter в поле input
+    var guessInput = document.getElementById("guessInput"); 
+    guessInput.onkeypress = handleKeyPress; //Добавляем новый обработчик событий нажатия клавиш в поле ввода HTML.
+   
+    model.generateShipLocations(); // При таком вызове, позиции всех кораблей будут определены к моменту начала игры.
 }
 
 
 
 
 
-// // // объявление переменных
-// // let randomLoc = Math.floor(Math.random() * 5), // функция Math.random() создает сулчайное число от 0 до 0.999. Умножение на 5 создает число от 0 до 4.999. Math.floor - округляет число в меньшую сторону - 4.999 будет 4
-// //     location1 = randomLoc, // позиции №1 присваивается случайная позиция
-// //     location2 = location1 + 1, // позиции №2 присваивается значение позиции №1 увеличенной на единицу
-// //     location3 = location2 + 1, // позиции №3 присваивается значение позиции №2 увеличенной на единицу
-// //     guess, // значение выстрела пользователя изначально undefined
-// //     hits = 0, //  колличество попаданий
-// //     guesses = 0, // количество попыток
-// //     isSunk = false; // корабль потоплен - ложь
 
-
-// // while (isSunk == false) { // Цикл while с условием, если переменная isSunk равна false выполнится потому что isSunk = false
-// //     guess = prompt("Ваш выстрел! (введите число от 0 до 6)");
-// //     if (guess < 0 || guess > 6) {
-// //         alert("Введите правильное значение (0-6)");
-// //         } else {
-// //                 guesses = guesses + 1; // увеличивает колличесвто попыток на один
-
-// //         if (guess == location1 || guess == location2 || guess == location3) {
-// //             alert("Попадание в цель!");
-// //             hits = hits + 1; // увеличивает кол-во попаданий на один
-
-// //         if (hits == 3) {
-// //             isSunk = true; // переменная становится true если кол-во попаданий равняется трем
-// //             alert("Вы потопили мой корабль!");
-// //          }
-// //     } else {
-// //         alert("Мимо!");
-// //       }
-// //     }
-// // }
-
-// // let stats = "Вы сипользовали " + guesses + " попыток, что бы потопить корабль. " +
-// // "Ваша точность составляет: " + (300/guesses).toFixed() + "%";
-// // alert(stats);
+// // Глобальный объект ships(корабли)
+// var ships = [{locations: ["10", "20", "30"], hits: ["", "", ""] },  // Переменная ships(корабли) ссылается на объект с массивом, внутри которого три объекта представляющих корабль №1, 2 и 3. 
+//             { locations: ["32", "33", "34"], hits: ["", "", ""] },  // Каждый объект содержит в себе массив locations(координаты) и массив hits(попадания) с тремя элементами внутри. 
+//             { locations: ["63", "64", "65"], hits: ["", "", ""] }],
+// // тестовая проверка
+// var ship3 = ships[2];   // объект, с индексом 2(третий корабль), из массива объекта ships, помещается в переменную ship3  
+// var hit3 = ship3.hits;  // в переменную hit3 помещается массив hits принадлежащий третьему кораблю(ship3) 
+//     hit3[1] = "hit";    // в массив hits представленный переменной hit3 помещается значение "hit" под индексом 1(второе значение)
+//     if (hit3[1] === "hit") {    // если в массиве hits под индексом 1 находится значение "hit", то...
+//         console.log("Попадание в середину третьего корабля!");
+//     } else {    // иначе...
+//         console.log("Мимо! Попробуйте еще раз"); 
+// }
 
 
 
+// // Примитивный морской бой с полем на 7 клеток и одним кораблем (используются функции prompt, alert)
 
+// let randomLoc = Math.floor(Math.random() * 5), // функция Math.random() создает сулчайное число от 0 до 0.999. Умножение на 5 создает число от 0 до 4.999. Math.floor - округляет число в меньшую сторону - 4.999 будет 4
+//     location1 = randomLoc, // позиции №1 присваивается случайная позиция
+//     location2 = location1 + 1, // позиции №2 присваивается значение позиции №1 увеличенной на единицу
+//     location3 = location2 + 1, // позиции №3 присваивается значение позиции №2 увеличенной на единицу
+//     guess, // значение выстрела пользователя изначально undefined
+//     hits = 0, //  колличество попаданий
+//     guesses = 0, // количество попыток
+//     isSunk = false; // корабль потоплен - ложь
 
-// var view = {
-//     displayMessage: function (msg) {
-//         var messageArea = document.getElementById("messageArea");
-//         messageArea.innerHTML = msg;
-//     },
-//     displayHit: function (location) {
-//         var cell = document.getElementById(location);
-//         cell.setAttribute("class", "hit");
-
-//     },
-//     displayMiss: function (location) {
-//         var cell = document.getElementById(location);
-//         cell.setAttribute("class", "miss");
-//     }
-// };
-
-// var model = {       // глобальный объект 
-//     boardSize: 7,   // свойство размер игровой доски со значением 7 клеток
-//     numShips: 3,    // свойство колл-во кораблей со значение 3 корабля
-//     shipLength: 3,  // свойство длина корабля со значением 3 клетки
-//     shipsSunk: 0,   // свойство потопленных кораблей, изначально 0
-//     ships: [ { locations: [0, 0, 0], hits: ["", "", ""] },
-//             { locations: [0, 0, 0], hits: ["", "", ""] },
-//             { locations: [0, 0, 0], hits: ["", "", ""] } ],     // объект с индексом 2
-//     fire: function(guess) {                         // Метод получает координаты выстрела.
-//         for (var i = 0; i < this.numShips; i++) {   // перебераю массив принадлежащий свойству ships до тех пор пока индекс(номер) значения массива меньше значения numShips=3  
-//             var ship = this.ships[i];               // получаю объект ship(корабль) из массива принадлежащего свойству ships. Сначала получаю объект под индексом 0 затем 1 и 2       
-//             var index = ship.locations.indexOf(guess);   // Метод indexOf ищет в массиве указанное значение и возвращает его индекс (или -1, если значение отсутствует в массиве).
-//             if (index >= 0) {
-//                 ship.hits[index] = "hit";           // Ставим отметку в массиве hits по тому же индексу
-//                 view.displayHit(guess);
-//                 view.displayMessage("Попадание!");
-//                 if (this.isSunk(ship)) {            // Если isSunk = true
-//                     view.displayMessage("Вы потопили мой корабль!");
-//                     this.shipsSunk++;
-//                     }
-//                 return true;                        // Если попадание то вернуть true
-//             }
-//         }
-//         view.displayMiss(guess);
-//         view.displayMessage("Вы промахнулись");
-//         return false;   // если промах, то вернуть false        
-//     },
-    
-//     isSunk: function(ship) {    // Свойство - потоплен ли корабль
-//         for (var i = 0; i < this.shipLength; i++) {     // перебераю массив свойства hits корабля до тех пор пока индекс меньше длинный корабля 
-//             if (ship.hits[i] !== "hit") {   // если индекс в массиве hits не имеет значения "hit" , то вернуть false 
-//             return false;
-//             }
-//         }
-//         return true;    // возвращаю тру в метод fire(guess)
-//     },
-// generateShipLocations: function() {
-//     var locations;
-//     for (var i = 0; i < this.numShips; i++) {
-//     do {
-//     locations = this.generateShip();
-//     } while (this.collision(locations));
-//     this.ships[i].locations = locations;
-//     }
-//     },
-// generateShip: function() {
-//     var direction = Math.floor(Math.random() * 2);
-//     var row, col;
-//     if (direction === 1) {
-//         row = Math.floor(Math.random() * this.boardSize);
-//         col = Math.floor(Math.random() * (this.boardSize - this.shipLength));
+// while (isSunk == false) { // Цикл while с условием, если переменная isSunk равна false выполнится потому что isSunk = false
+//     guess = prompt("Ваш выстрел! (введите число от 0 до 6)");
+//     if (guess < 0 || guess > 6) {
+//         alert("Введите правильное значение (0-6)");
 //         } else {
-//         row = Math.floor(Math.random() * (this.boardSize - this.shipLength));
-//         col = Math.floor(Math.random() * this.boardSize);
-//         }
-//     var newShipLocations = [];
-//     for (var i = 0; i < this.shipLength; i++) {
-//     if (direction === 1) {
-//         newShipLocations.push(row + "" + (col + i));
-//     } else {
-//         newShipLocations.push((row + i) + "" + col);
-//     }
-//     }
-//     return newShipLocations;
-//     },
-// collision: function(locations) {
-//     for (var i = 0; i < this.numShips; i++) {
-//     var ship = model.ships[i];
-//     for (var j = 0; j < locations.length; j++) {
-//     if (ship.locations.indexOf(locations[j]) >= 0) {
-//     return true;
-//     }
-//     }
-//     }
-//     return false;
-//     }  
-// };
+//                 guesses = guesses + 1; // увеличивает колличесвто попыток на один
 
-// var controller = {
-//     guesses: 0,
-//     processGuess: function(guess) {
-//         var location = parseGuess(guess);
-//         if (location) {
-//             this.guesses++;
-//             var hit = model.fire(location);
-//             if (hit && model.shipsSunk === model.numShips) {
-//                 view.displayMessage("You sank all my battleships, in " +
-//                 this.guesses + " guesses");
-//     }
+//         if (guess == location1 || guess == location2 || guess == location3) {
+//             alert("Попадание в цель!");
+//             hits = hits + 1; // увеличивает кол-во попаданий на один
+
+//         if (hits == 3) {
+//             isSunk = true; // переменная становится true если кол-во попаданий равняется трем
+//             alert("Вы потопили мой корабль!");
+//          }
+//     } else {
+//         alert("Мимо!");
+//       }
 //     }
 // }
-// };
 
-
-// function parseGuess(guess) {
-//     var alphabet = ["A", "B", "C", "D", "E", "F", "G"];
-//     if (guess === null || guess.length !== 2) {
-//     alert("Oops, please enter a letter and a number on the board.");
-//     } else {
-//     firstChar = guess.charAt(0);
-//     var row = alphabet.indexOf(firstChar);
-//     var column = guess.charAt(1);
-//     if (isNaN(row) || isNaN(column)) {
-//         console.log("Oops, that isn't on the board.");
-//     } else if (row < 0 || row >= model.boardSize ||
-//     column < 0 || column >= model.boardSize) {
-//         alert("Oops, that's off the board!");
-//     } else {
-//     return row + column;
-//     }
-//     }
-//     return null;
-//     }
-
-
-// function init() {
-//     var fireButton = document.getElementById("fireButton");
-//     fireButton.onclick = handleFireButton;
-//     }
-//     function handleFireButton() {
-//         model.generateShipLocations();
-//     }
-//     window.onload = init;
-
-
-// function handleFireButton() {
-//     var guessInput = document.getElementById("guessInput");
-//     var guess = guessInput.value;
-//     controller.processGuess(guess);
-//     guessInput.value = "";
-//     }
-
+// let stats = "Вы сипользовали " + guesses + " попыток, что бы потопить корабль. " +
+// "Ваша точность составляет: " + (300/guesses).toFixed() + "%";
+// alert(stats);
